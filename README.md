@@ -2,9 +2,9 @@
 
 This is a fairly advanced heating controller using MQTT over WiFi. Designed for ESP32, with relays for all the heating valves.
 
-Triggered via MQTT. Zone names are currently hard-coded.
+Zones are triggered via MQTT or thermostats. Zone names are currently hard-coded.
 
-Right now, it supports three zones, with a fourth valve for domestic hot water.
+Right now, it is configured for three heating zones, with a fourth zone for domestic hot water.
 
 There are some bugs - sometimes it needs a reset to reconnect to WiFi or MQTT.
 
