@@ -6,8 +6,6 @@ Zones are triggered via MQTT or thermostats. Zone names are currently hard-coded
 
 Right now, it is configured for three heating zones, with a fourth zone for domestic hot water.
 
-There are some bugs - sometimes it needs a reset to reconnect to WiFi or MQTT.
-
 Open sourcing this to see if there's any interest from others in taking it further. Let me know if you find it useful, fork it, raise issues, do what you will!
 
 
