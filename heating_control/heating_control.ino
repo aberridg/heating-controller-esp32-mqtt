@@ -22,10 +22,6 @@
 #include <elapsedMillis.h>
 #include <LinkedList.h>
 
-#include "./Devices.h" // valves, pumps, thermostat classes (use the constants defines above)
-#include "./HeatingZone.h"
-#include "./HeatingSystem.h"
-
 const char* ssid     = "New Home";                          //WiFi Name
 // For wifi password, please create a new file called WifiPassword.h
 // with a line like this: 
@@ -56,6 +52,10 @@ NTPClient timeClient(ntpUDP, NTP_ADDRESS, NTP_OFFSET, NTP_INTERVAL);
 uint8_t ledPin = 16; // Onboard LED reference
 
 SSD1306 display(0x3c, 5, 4); // instance for the OLED. Addr, SDA, SCL
+
+#include "./Devices.h" // valves, pumps, thermostat classes (use the constants defines above)
+#include "./HeatingZone.h"
+#include "./HeatingSystem.h"
 
 ////////////////////////////////////////////////////
 //   CONFIGURATION BLOCK
