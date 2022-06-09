@@ -5,7 +5,6 @@ class HeatingZone
     Valve *_valve;
     Thermostat *_thermostat;
     bool _inhibited;
-    bool _coolDownRequired = false;
     elapsedMillis sinceCoolDownRequested = 0;
     
   public:
@@ -22,10 +21,9 @@ class HeatingZone
       inhibited, // 1
       requested, // 2
       shutDownRequested, // 3
-      shutDownWithInhibitRequested, // 4
+      coolDownWithInhibitRequested, // 4
       coolDownRequested, // 5
-      on, // 6
-      coolingDown // 7
+      on // 6
     };
 
     States _state;
@@ -36,8 +34,7 @@ class HeatingZone
         return;
       } else if (_state != States::requested) {
         getValve()->On();
-        _state = States::requested;
-        _coolDownRequired = true;
+        _state = States::requested;        
       }
     }
 
@@ -45,14 +42,14 @@ class HeatingZone
       Serial.print("Req shutdown");
       Serial.println(_state);
       if (_state == States::on) {
-        _state = States::shutDownRequested;
-        getValve()->Off();
+        _state = States::shutDownRequested; // this _should_ immediately shut down      
+        getValve()->Off();  
       }
     }
 
-    void RequestShutDownWithInhibit() {
-      RequestShutDown();
-      _state = States::shutDownWithInhibitRequested;
+    void RequestCoolDownWithInhibit() {
+      RequestCoolDown();
+      _state = States::coolDownWithInhibitRequested;
     }
 
     void Uninhibit() {
@@ -63,31 +60,28 @@ class HeatingZone
 
     void RequestCoolDown() {
       Serial.println("Requesting Cooldown");
-      if (_coolDownRequired && _state != States::coolDownRequested) {
-        getValve()->On();
-        _state = States::coolDownRequested;
-        sinceCoolDownRequested = 0;
-      }
+      _state = States::coolDownRequested;
+      sinceCoolDownRequested = 0;      
     }
 
     bool IsCoolingDown() {
-      return _state == States::coolDownRequested;
+      return _state == States::coolDownRequested || _state == States::coolDownWithInhibitRequested;
     }
 
     bool IsOff() {
       if (_state == States::requested || _state == States::on) return false;
-      return _state == States::off || _state == States::shutDownRequested || _state == States::shutDownWithInhibitRequested || _state == States::coolingDown;
+      return _state == States::off || _state == States::shutDownRequested || _state == States::coolDownWithInhibitRequested || _state == States::coolDownRequested;
     }
 
     void ProcessThermostat() {
       //Serial.println("Process therm");
-      if (getThermostat() != NULL && getThermostat()->IsOn() && _state != States::requested && _state != States::on) {
+      if (getThermostat() != NULL && getThermostat()->IsOn() && _state != States::requested && _state != States::on && _state != States::coolDownWithInhibitRequested) {
         //Serial.println("Therm on");
         Request();
       }
 
       if (getThermostat() != NULL && getThermostat()->IsOff() && _state == States::on) {
-        RequestShutDown();
+        RequestCoolDown();
       }
     }
 
@@ -95,30 +89,29 @@ class HeatingZone
       ProcessThermostat();
       getValve()->Update();
 
-      if (_state == States::coolDownRequested) {
+      if (_state == States::coolDownRequested || _state == States::coolDownWithInhibitRequested) {
         if (sinceCoolDownRequested > COOLDOWN_TIME * 1000) {
-          _coolDownRequired = false;
           getValve()->Off();        
         }
 
         if (getValve()->IsClosed()) {
-          _state = States::off;
+          if (_state == States::coolDownWithInhibitRequested) {
+            _state = States::inhibited;
+          } else {
+            _state = States::off;
+          }
         }
       }
 
-      if (getValve()->isValveOpen() && _state != States::coolDownRequested && _state != States::shutDownRequested && _state != States::shutDownWithInhibitRequested && _state != States::inhibited) {
+      if (getValve()->isValveOpen() && _state != States::coolDownRequested && _state != States::shutDownRequested && _state != States::coolDownWithInhibitRequested && _state != States::inhibited) {
         _state = States::on;
-      }
-
-      if (getValve()->isValveOpen() && _state == States::on) {
-        _coolDownRequired = true;
       }
 
       if (_state == States::shutDownRequested && getValve()->IsClosed()) {
         _state = States::off;
       }
 
-      if (_state == States::shutDownWithInhibitRequested && getValve()->IsClosed()) {
+      if (_state == States::coolDownWithInhibitRequested && getValve()->IsClosed()) {
         _state = States::inhibited;
       }
 
@@ -137,10 +130,10 @@ class HeatingZone
         Request();
       } else if (!strncmp((char *)payload, "off", length)) {
         client.publish(String(zoneTopic + "_pub").c_str(), "off", true);
-        RequestShutDown();
+        RequestCoolDown();
       } else if (!strncmp((char *)payload, "inhibit", length)) {
         client.publish(String(zoneTopic + "_pub").c_str(), "inhibit", true);
-        RequestShutDownWithInhibit();
+        RequestCoolDownWithInhibit();
       } else if (!strncmp((char *)payload, "uninhibit", length)) {
         client.publish(String(zoneTopic + "_pub").c_str(), "uninhibit", true);
         Uninhibit();
@@ -157,24 +150,6 @@ class HeatingZone
 
     String getName() {
       return _name;
-    }
-
-    void setInhibited(bool inhibited) {
-      _inhibited = inhibited;
-    }
-
-    bool isInhibited() {
-      //Serial.println("In isInhibited");
-      //Serial.println(_inhibited);
-      return _inhibited;
-    }
-
-    void setCoolDownRequired(bool coolDownRequired) {
-      _coolDownRequired = coolDownRequired;
-    }
-
-    bool isCoolDownRequired() {
-      return _coolDownRequired;
     }
 
     bool IsBoilerRequired() {

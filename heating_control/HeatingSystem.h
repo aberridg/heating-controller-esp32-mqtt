@@ -6,7 +6,7 @@ class HeatingSystem
     Pump          *_pump;
     elapsedMillis _sinceCoolDownStarted;
     elapsedMillis _sincePumpStarted;
-    
+
     int GetZoneIndex(LinkedList<HeatingZone*> zones, HeatingZone *zone) {
       for (int i = 0; i < zones.size(); i++) {
         if (zones.get(i) == zone) {
@@ -26,17 +26,6 @@ class HeatingSystem
         }
       }
       return true;
-    }
-
-    bool IsCoolDownRequired() {
-      //Serial.println("Checking if all zones are off");
-      for (int i = 0; i < _zones.size(); i++) {
-        HeatingZone *zone = _zones.get(i);
-        if (zone->isCoolDownRequired()) {
-          return true;
-        }
-      }
-      return false;
     }
 
     bool IsCoolingDown() {
@@ -61,7 +50,7 @@ class HeatingSystem
       return false;
     }
 
-    bool isAtLeastOneValveOpen() {
+    bool IsPumpRequired() {
       for (int i = 0; i < _zones.size(); i++) {
         HeatingZone *zone = _zones.get(i);
         if (zone->getValve()->isValveOpen()) {
@@ -81,8 +70,8 @@ class HeatingSystem
       String disp;
       for (int i = 0; i < _zones.size(); i++) {
         HeatingZone *zone = _zones.get(i);
-        disp += zone->getName() + ": " 
-                      + zone->getValve()->PrintState() + ";";
+        disp += zone->getName() + ": "
+                + zone->getValve()->PrintState() + ";";
         if (zone->getThermostat() != NULL) {
           disp += zone->getThermostat()->PrintState();
         }
@@ -105,34 +94,24 @@ class HeatingSystem
       }
 
       if (!IsBoilerRequired() && _boiler->IsOn()) {
-        Serial.println("Cooldown required");
-        // Cooldown required
         // Switch boiler off!
         Serial.println("Switching boiler off");
         _boiler->Off();
-        // Make sure all zones that need a cooldown get it
-        for (int i = 0; i < _zones.size(); i++) {
-          HeatingZone *zone = _zones.get(i);
-          zone->RequestCoolDown();
-        }
       }
 
-      if (AreAllZonesOff() && !IsCoolDownRequired()) {
-        Serial.println("Cooling down done");
+      if (!IsPumpRequired()) {
+        Serial.println("Switch pump off");
         // Switch off pump
         _pump->Off();
       }
 
-      if (!AreAllZonesOff()) {       
-        //Serial.println("Checking if pump is on");
-        if (IsBoilerRequired() && _pump->IsOn() && _sincePumpStarted > 10000 && _boiler->IsOff()) {
-          Serial.println("Switching boiler on");
-          _boiler->On();
-        } else if (isAtLeastOneValveOpen() && _pump->IsOff()) { // start pump - if and only if at least one valve is open!
-          Serial.println("Switching pump on");
-          _pump->On();
-          _sincePumpStarted = 0;
-        }
+      if (IsBoilerRequired() && _pump->IsOn() && _sincePumpStarted > 10000 && _boiler->IsOff()) {
+        Serial.println("Switching boiler on");
+        _boiler->On();
+      } else if (IsPumpRequired() && _pump->IsOff()) { // start pump - if and only if at least one valve is open!
+        Serial.println("Switching pump on");
+        _pump->On();
+        _sincePumpStarted = 0;
       }
     }
 
