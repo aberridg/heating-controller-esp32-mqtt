@@ -200,7 +200,7 @@ class Valve : public Manipulator
       transitionCount = 0;
     }
 
-    bool isValveOpen()   {
+    bool IsValveOpen()   {
       //Serial.println(microswitch->IsOn());
       return _state == States::open; // valve is requested to be open and has actually opened
     }

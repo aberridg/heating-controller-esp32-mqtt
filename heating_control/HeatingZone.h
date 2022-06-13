@@ -4,7 +4,6 @@ class HeatingZone
     String _name;
     Valve *_valve;
     Thermostat *_thermostat;
-    bool _inhibited;
     elapsedMillis sinceCoolDownRequested = 0;
     
   public:
@@ -12,7 +11,6 @@ class HeatingZone
       _name = name;
       _valve = valve;
       _thermostat = thermostat;
-      _inhibited = false;
       _state = States::off;
     }
 
@@ -103,7 +101,7 @@ class HeatingZone
         }
       }
 
-      if (getValve()->isValveOpen() && _state != States::coolDownRequested && _state != States::shutDownRequested && _state != States::coolDownWithInhibitRequested && _state != States::inhibited) {
+      if (getValve()->IsValveOpen() && _state != States::coolDownRequested && _state != States::shutDownRequested && _state != States::coolDownWithInhibitRequested && _state != States::inhibited) {
         _state = States::on;
       }
 
@@ -154,6 +152,10 @@ class HeatingZone
 
     bool IsBoilerRequired() {
       return _state == States::on;
+    }
+
+    bool IsPumpRequired() {
+      return getValve()->IsValveOpen();
     }
         
 }; // End of HeatingZone class

@@ -53,7 +53,7 @@ class HeatingSystem
     bool IsPumpRequired() {
       for (int i = 0; i < _zones.size(); i++) {
         HeatingZone *zone = _zones.get(i);
-        if (zone->getValve()->isValveOpen()) {
+        if (zone->IsPumpRequired()) {
           return true;
         }
       }

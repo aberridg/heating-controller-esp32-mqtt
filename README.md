@@ -8,4 +8,8 @@ Right now, it is configured for three heating zones, with a fourth zone for dome
 
 Open sourcing this to see if there's any interest from others in taking it further. Let me know if you find it useful, fork it, raise issues, do what you will!
 
+I have designed some custom hardware to go with this:
+
+https://github.com/aberridg/heating-controller-esp32-hardware
+
 
