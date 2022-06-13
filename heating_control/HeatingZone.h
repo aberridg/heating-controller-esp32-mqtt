@@ -92,7 +92,7 @@ class HeatingZone
           getValve()->Off();        
         }
 
-        if (getValve()->IsClosed()) {
+        if (getValve()->IsOff() && getValve()->IsClosed()) {
           if (_state == States::coolDownWithInhibitRequested) {
             _state = States::inhibited;
           } else {

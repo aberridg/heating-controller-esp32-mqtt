@@ -170,6 +170,10 @@ class Manipulator : public IODevice
     virtual bool IsOn()   {
       return _IsOn;
     }
+
+    virtual bool IsOff() {
+      return !_IsOn;
+    }
 };
 
 // Valve: controls a valve on a digital output via a relay.
