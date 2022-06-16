@@ -39,10 +39,7 @@ class HeatingZone
     void RequestShutDown() {
       Serial.print("Req shutdown");
       Serial.println(_state);
-      if (_state == States::on) {
-        _state = States::shutDownRequested; // this _should_ immediately shut down      
-        getValve()->Off();  
-      }
+      _state = States::shutDownRequested; // this _should_ immediately shut down            
     }
 
     void RequestCoolDownWithInhibit() {
@@ -57,9 +54,14 @@ class HeatingZone
     }
 
     void RequestCoolDown() {
-      Serial.println("Requesting Cooldown");
-      _state = States::coolDownRequested;
-      sinceCoolDownRequested = 0;      
+      if (!getValve()->IsOpen()) {
+        // Shut down immediately...
+        RequestShutDown();       
+      } else {
+        Serial.println("Requesting Cooldown");
+        _state = States::coolDownRequested;
+        sinceCoolDownRequested = 0;      
+      }
     }
 
     bool IsCoolingDown() {
@@ -101,7 +103,7 @@ class HeatingZone
         }
       }
 
-      if (getValve()->IsValveOpen() && _state != States::coolDownRequested && _state != States::shutDownRequested && _state != States::coolDownWithInhibitRequested && _state != States::inhibited) {
+      if (getValve()->IsValveOpen() && _state == States::requested) {
         _state = States::on;
       }
 

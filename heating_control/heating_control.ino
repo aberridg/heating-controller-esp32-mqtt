@@ -115,9 +115,10 @@ bool connectToWifi() {
   int retries = 0;
   while (WiFi.status() != WL_CONNECTED && retries < 5)
   {
+    WiFi.disconnect();
     printOLED("Connecting to WiFi");
     Serial.println("Connecting to WiFi");
-    delay(3000);
+    delay(4000);
     flushDisplay();
     retries ++;
   }
@@ -143,6 +144,7 @@ bool mqttConnect() {
   while (!client.connected() && retries < 10) {
     printOLED("Connecting to MQTT...");
     flushDisplay();
+    client.setKeepAlive( 90 ); // setting keep alive to 90 seconds
     if (client.connect("Heating Controller", mqttUser, mqttPassword )) {
 
       flushDisplay();
@@ -159,7 +161,7 @@ bool mqttConnect() {
   }
   if (!client.connected()) {
     clearDisplay();
-    printOLED("MQTT Failed");
+    printOLED("MQTT connect Failed");
     printOLED(String(client.state()));
     flushDisplay();
     delay(500);
@@ -259,6 +261,7 @@ void loop () {
     ESP.restart();
   }
 
+  client.loop();
   if (mqttConnect()) {
     sinceSuccessfulMqtt = 0;
   }
@@ -273,9 +276,8 @@ void loop () {
   ArduinoOTA.handle();
   timeClient.update(); 
 
-  // Small delay has been suggested to improve stability of MQTT connection
-  delay(100);
-  client.loop();
+  // Small delay has been suggested to improve stability of MQTT connection. Doesn't seem to help, so remove it for now
+  //delay(100);
     
   if (sinceUpdate > 1000) {
     

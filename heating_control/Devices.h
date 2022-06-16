@@ -222,6 +222,10 @@ class Valve : public Manipulator
       return _state == States::failedOpen;
     }
 
+    bool IsOpening() {
+      return _state == States::opening;
+    }
+
     // Execute once per pass in the sketch loop() !!!
     void Update() {
       if (IsOn()) {
