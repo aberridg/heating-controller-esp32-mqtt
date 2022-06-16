@@ -54,7 +54,7 @@ class HeatingZone
     }
 
     void RequestCoolDown() {
-      if (!getValve()->IsOpen()) {
+      if (!getValve()->IsValveOpen()) {
         // Shut down immediately...
         RequestShutDown();       
       } else {
