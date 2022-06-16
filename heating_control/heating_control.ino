@@ -18,7 +18,7 @@
 #include <NTPClient.h>
 #include <WiFiUdp.h>
 #include <ArduinoOTA.h>
-#include <PubSubClient.h>  // Keith O'Leary - IMPORTANT - it seems v2.8 disconnects sometimes. Install 2.7 for now!
+#include <PubSubClient.h>  // Keith O'Leary
 #include <elapsedMillis.h>
 #include <LinkedList.h>
 
