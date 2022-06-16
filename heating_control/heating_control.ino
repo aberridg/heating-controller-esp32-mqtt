@@ -161,13 +161,12 @@ bool mqttConnect() {
     retries++;
     delay(500);
   }
-  if (!client.connected()) {
-    clearDisplay();
-    printOLED("MQTT connect Failed");
-    printOLED(String(client.state()));
-    flushDisplay();
-    delay(500);
-  }
+  clearDisplay();
+  printOLED("MQTT connect Failed");
+  printOLED(String(client.state()));
+  flushDisplay();
+  delay(500);
+  
   return false;
 }
 
