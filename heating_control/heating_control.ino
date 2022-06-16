@@ -111,15 +111,17 @@ bool connectToWifi() {
     return true;
   }
   clearDisplay();
-  WiFi.begin(ssid, password);
+  
   int retries = 0;
   while (WiFi.status() != WL_CONNECTED && retries < 5)
   {
     WiFi.disconnect();
     printOLED("Connecting to WiFi");
     Serial.println("Connecting to WiFi");
+    WiFi.begin(ssid, password);
     delay(4000);
     flushDisplay();
+    
     retries ++;
   }
   clearDisplay();
