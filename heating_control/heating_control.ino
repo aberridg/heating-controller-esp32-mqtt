@@ -15,12 +15,15 @@
 
 #include "SSD1306.h"  // ThingPulse ESP8266_and_ESP32_OLED_driver_for_SSD1306_displays
 #include <WiFi.h>
+#include <WiFiMulti.h>
 #include <NTPClient.h>
 #include <WiFiUdp.h>
 #include <ArduinoOTA.h>
 #include <PubSubClient.h>  // Keith O'Leary - IMPORTANT - it seems v2.8 disconnects sometimes. Install 2.7 for now!
 #include <elapsedMillis.h>
 #include <LinkedList.h>
+
+WiFiMulti WiFiMulti;
 
 const char* ssid     = "New Home";                          //WiFi Name
 // For wifi password, please create a new file called WifiPassword.h
@@ -49,9 +52,7 @@ PubSubClient client(espClient);
 WiFiUDP ntpUDP;
 NTPClient timeClient(ntpUDP, NTP_ADDRESS, NTP_OFFSET, NTP_INTERVAL);
 
-uint8_t ledPin = 16; // Onboard LED reference
-
-SSD1306 display(0x3c, 5, 4); // instance for the OLED. Addr, SDA, SCL
+SSD1306 display(0x3c, 32, 33); // instance for the OLED. Addr, SDA, SCL
 
 #include "./Devices.h" // valves, pumps, thermostat classes (use the constants defines above)
 #include "./HeatingZone.h"
@@ -62,26 +63,26 @@ SSD1306 display(0x3c, 5, 4); // instance for the OLED. Addr, SDA, SCL
 
 // Configure/reorder your pinning as you like (This my wiring on an ESP32);
 
-#define BOILER_PIN     22  // output to a Relay for Boiler -- Relay Channel 2
-#define FU_PUMP_PIN    23  // output to a Relay that switches the Pump -- Relay Channel 4
+#define BOILER_PIN     16  // output to a Relay for Boiler -- Relay Channel 2
+#define FU_PUMP_PIN    17  // output to a Relay that switches the Pump -- Relay Channel 4
 
 // Definitions for the pins for my zones... Could be improved/not hard-coded, should be part of the Zone objects! Sorry about that!
-#define MILL_V   15  // Zone 1: output to a Relay that controls the Valve(s)
-#define MILL_MICROSWITCH 33
-#define ENG_RM_VALVE  25  // Zone 2: output to a Relay that controls the Valve(s)
-#define ENG_RM_MICROSWITCH 26
-#define GRANARY_VALVE   19  // Zone 3: output to a Relay that controls the Valve(s) -- Relay Channel 1
-#define GRANARY_MICROSWITCH 17
-#define DHW_VALVE   21 // DHW: output to a Relay that controls the Valve(s) -- Relay Channel 3
-#define DHW_MICROSWITCH 32 // for some reason, pin 35 doesn't seem to work for this purpose
+#define MILL_V   12  // Zone 1: output to a Relay that controls the Valve(s)
+#define MILL_MICROSWITCH 22
+#define ENG_RM_VALVE  13  // Zone 2: output to a Relay that controls the Valve(s)
+#define ENG_RM_MICROSWITCH 23
+#define GRANARY_VALVE   14  // Zone 3: output to a Relay that controls the Valve(s) -- Relay Channel 1
+#define GRANARY_MICROSWITCH 26
+#define DHW_VALVE   15 // DHW: output to a Relay that controls the Valve(s) -- Relay Channel 3
+#define DHW_MICROSWITCH 21 // for some reason, pin 35 doesn't seem to work for this purpose - it needed external pullup!
 
-#define MILL_T  17  // Zone 1; input wired to the thermostat in the living room
-#define ENG_RM_THERMO 27  // Zone 2; input wired to the thermostat in engine room
-#define GRANARY_THERMO  18 // Zone 3; input wired to the thermostat in the granary
-#define DHW_THERMO      14 // DHW Thermostat
+//#define MILL_T  17  // Zone 1; input wired to the thermostat in the living room
+//#define ENG_RM_THERMO 27  // Zone 2; input wired to the thermostat in engine room
+//#define GRANARY_THERMO  18 // Zone 3; input wired to the thermostat in the granary
+#define DHW_THERMO      21 // DHW Thermostat
 
-#define HEATING_LED    20 // On when heating, Alternates during cooldown, is Off in idle mode
-#define INDICATION_LED 16 // Alternates the on board LED to indicate board runs; can be easily removed to free an extra IO pin!!
+//#define HEATING_LED    20 // On when heating, Alternates during cooldown, is Off in idle mode
+#define INDICATION_LED 25 // Alternates the on board LED to indicate board runs; can be easily removed to free an extra IO pin!!
 
 // END CONFIGURATION BLOCK
 //////////////////////////////////////////////////
@@ -89,7 +90,7 @@ SSD1306 display(0x3c, 5, 4); // instance for the OLED. Addr, SDA, SCL
 
 // Some fixed devices:
 LED           iLED(INDICATION_LED, "Indicator LED"); // can be removed if you run out of IO's
-LED           hLED(HEATING_LED, "Heating LED");
+//LED           hLED(HEATING_LED, "Heating LED");
 Manipulator   CV(BOILER_PIN, "Boiler");
 Pump          FUPump(FU_PUMP_PIN, "Pump");
 
@@ -99,7 +100,7 @@ HeatingSystem heatingSystem(BOILER_PIN, FU_PUMP_PIN);
 void printConfiguration() {
   clearDisplay();
   iLED.PrintState();
-  hLED.PrintState();
+  //hLED.PrintState();
   printOLED(CV.PrintState());
   printOLED(FUPump.PrintState());
   printOLED(heatingSystem.PrintState());
@@ -111,11 +112,11 @@ bool connectToWifi() {
     return true;
   }
   clearDisplay();
-  WiFi.begin(ssid, password);
+  
   int retries = 0;
-  while (WiFi.status() != WL_CONNECTED && retries < 5)
+  while (WiFiMulti.run() != WL_CONNECTED && retries < 5)
   {
-    WiFi.disconnect();
+    //WiFi.disconnect();
     printOLED("Connecting to WiFi");
     Serial.println("Connecting to WiFi");
     delay(4000);
@@ -173,11 +174,13 @@ void setup()
 {
   // initializations
   Serial.begin(115200);
-  pinMode(ledPin, OUTPUT);
   display.init(); // initialise the OLED
   display.setFont(ArialMT_Plain_10); // does what is says
   // Set the origin of text to top left
   display.setTextAlignment(TEXT_ALIGN_LEFT);
+
+  WiFiMulti.addAP(ssid, password);
+
 
   if (!connectToWifi()) {
     printOLED("Can't connect to WiFi!");

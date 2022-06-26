@@ -136,14 +136,14 @@ class Manipulator : public IODevice
   public:
     Manipulator(int pin, String name)  : IODevice(pin, name)   {
       pinMode(_Pin, OUTPUT);
-      digitalWrite(_Pin, HIGH);
+      digitalWrite(_Pin, LOW);
     }
     //methods
     void On()    {
       if (_IsOn == false)
       {
         _IsOn = true;
-        digitalWrite(_Pin, LOW);
+        digitalWrite(_Pin, HIGH);
         _sinceStateChanged = 0;
         onSwitch();
       }
@@ -153,7 +153,7 @@ class Manipulator : public IODevice
       if (_IsOn == true)
       {
         _IsOn = false;
-        digitalWrite(_Pin, HIGH);
+        digitalWrite(_Pin, LOW);
         _sinceStateChanged = 0;
         onSwitch();
       }
