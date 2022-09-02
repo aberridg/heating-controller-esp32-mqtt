@@ -134,15 +134,15 @@ bool connectToWifi() {
   return true;
 }
 
-bool mqttConnect() {
-  if (client.connected()) return true;
+bool mqttConnect(bool forceReconnect) {
+  if (!forceReconnect && client.connected()) return true;
   // MQTT
   client.setServer(mqttServer, mqttPort);
 
   int retries = 0;
   clearDisplay();
   printTimeStamp();
-  while (!client.connected() && retries < 10) {
+  while ((forceReconnect && retries < 10) || (!client.connected() && retries < 10)) {
     printOLED("Connecting to MQTT...");
     flushDisplay();
     client.setKeepAlive( 90 ); // setting keep alive to 90 seconds
@@ -191,7 +191,7 @@ void setup()
   
   timeClient.begin();
 
-  mqttConnect();
+  mqttConnect(false);
 
 
   // 
@@ -263,9 +263,9 @@ void loop () {
     delay(20000);
     ESP.restart();
   }
-
-  client.loop();
-  if (mqttConnect()) {
+  bool forceReconnect = client.loop();
+  
+  if (mqttConnect(forceReconnect)) {
     sinceSuccessfulMqtt = 0;
   }
 
