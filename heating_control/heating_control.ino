@@ -67,14 +67,14 @@ SSD1306 display(0x3c, 32, 33); // instance for the OLED. Addr, SDA, SCL
 #define FU_PUMP_PIN    17  // output to a Relay that switches the Pump -- Relay Channel 4
 
 // Definitions for the pins for my zones... Could be improved/not hard-coded, should be part of the Zone objects! Sorry about that!
-#define MILL_V   12  // Zone 1: output to a Relay that controls the Valve(s)
-#define MILL_MICROSWITCH 22
-#define ENG_RM_VALVE  13  // Zone 2: output to a Relay that controls the Valve(s)
-#define ENG_RM_MICROSWITCH 23
+#define MILL_V 13  // Zone 1: output to a Relay that controls the Valve(s) // Note - zones 1 and 2 are swapped on my system
+#define MILL_MICROSWITCH 23 
+#define ENG_RM_VALVE  12  // Zone 2: output to a Relay that controls the Valve(s)
+#define ENG_RM_MICROSWITCH 22 
 #define GRANARY_VALVE   14  // Zone 3: output to a Relay that controls the Valve(s) -- Relay Channel 1
 #define GRANARY_MICROSWITCH 26
 #define DHW_VALVE   15 // DHW: output to a Relay that controls the Valve(s) -- Relay Channel 3
-#define DHW_MICROSWITCH 21 // for some reason, pin 35 doesn't seem to work for this purpose - it needed external pullup!
+#define DHW_MICROSWITCH 27 // for some reason, pin 35 doesn't seem to work for this purpose - it needed external pullup!
 
 //#define MILL_T  17  // Zone 1; input wired to the thermostat in the living room
 //#define ENG_RM_THERMO 27  // Zone 2; input wired to the thermostat in engine room
