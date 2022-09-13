@@ -107,12 +107,17 @@ void printConfiguration() {
   flushDisplay();
 }
 
-bool connectToWifi() {
-  if (WiFi.status() == WL_CONNECTED) {
+bool connectToWifi(bool forceReconnect) {
+  if (!forceReconnect && WiFi.status() == WL_CONNECTED) {
     return true;
   }
   clearDisplay();
-  
+  if (forceReconnect) {
+    printOLED("Force WiFi");
+    flushDisplay();
+    WiFi.disconnect();
+    delay(1200);
+  }
   int retries = 0;
   while (WiFiMulti.run() != WL_CONNECTED && retries < 5)
   {
@@ -183,7 +188,7 @@ void setup()
   WiFiMulti.addAP(ssid, password);
 
 
-  if (!connectToWifi()) {
+  if (!connectToWifi(false)) {
     printOLED("Can't connect to WiFi!");
     flushDisplay();
     delay(5000);
@@ -255,16 +260,22 @@ void setup()
 
 elapsedMillis sinceUpdate;
 elapsedMillis sinceSuccessfulMqtt;
+elapsedMillis sinceReconnect;
 
 void loop () {
 
-  if (!connectToWifi()) {
+  bool forceReconnect = !client.loop();
+  if (sinceReconnect > 3600000) { // 1hr
+    client.disconnect();
+    sinceReconnect = 0;
+    forceReconnect = true;
+  }
+  if (!connectToWifi(forceReconnect)) {
     printOLED("Can't connect to WiFi!");
     flushDisplay();
     delay(20000);
     ESP.restart();
   }
-  bool forceReconnect = client.loop();
   
   if (mqttConnect(forceReconnect)) {
     sinceSuccessfulMqtt = 0;
