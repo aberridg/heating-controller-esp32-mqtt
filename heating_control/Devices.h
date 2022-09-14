@@ -5,24 +5,27 @@
 #define COOLDOWN_TIME          1800L   // When heating is done, continue water circulation for another 30 minutes
 // This enables further dissipation of the heat into the system (typically takes 15 to 30 minutes)
 
+elapsedMillis sincePrintOLED;
+bool flushed = false;
 int displayRow = 0;
 void flushDisplay() {
   display.display(); // display whatever is in the buffer
+  flushed = true;
 }
 void clearDisplay() {
-  delay(1000);
   display.clear(); // clear the display
   //display.setCursor(0,0);
   displayRow = 0;
 }
-
 void printOLED(String toDisplay) {
   display.drawString(0, displayRow * 10, toDisplay);
+  flushed = false;
   displayRow ++;
   if (displayRow > 6) {
     flushDisplay();
     clearDisplay();
   }
+  sincePrintOLED = 0;
 }
 
 
@@ -58,7 +61,7 @@ class IODevice {
     void DebugPrintState()   {
       clearDisplay();
       printTimeStamp();
-      printOLED(PrintState()); flushDisplay();
+      printOLED(PrintState()); 
     }
 
     String PrintState() {
@@ -285,7 +288,7 @@ class Pump : public Manipulator
         } else if (doMaintenance) {
           clearDisplay();
           printTimeStamp();
-          printOLED(": Pump Maintenance cleared"); flushDisplay();
+          printOLED(": Pump Maintenance cleared"); 
           doMaintenance = false;
         }
       }
@@ -295,7 +298,7 @@ class Pump : public Manipulator
         }  else if (doMaintenance == false) {
           clearDisplay();
           printTimeStamp();
-          printOLED(": Pump Maintenance needed"); flushDisplay();
+          printOLED(": Pump Maintenance needed"); 
           doMaintenance = true;
         }
       }

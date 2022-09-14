@@ -82,8 +82,14 @@ class HeatingSystem
 
     void AddZone(HeatingZone *zone) {
       _zones.add(zone);
-      // Subscribe to the MQTT topic for this zone - important!
-      client.subscribe(String("heating/" + zone->getName()).c_str());
+    }
+
+    void SubscribeToAllTopics() {
+      for (int i = 0; i < _zones.size(); i++) {
+        HeatingZone *zone = _zones.get(i);
+        // Subscribe to the MQTT topic for this zone - important!
+        client.subscribe(String("heating/" + zone->getName()).c_str());
+      }
     }
 
     void Update() {

@@ -126,7 +126,7 @@ class HeatingZone
       clearDisplay();
       printOLED("Got message");
       printOLED((char*)payload);
-      flushDisplay();
+      
       if (!strncmp((char *)payload, "on", length)) {
         client.publish(String(zoneTopic + "_pub").c_str(), "on", true);
         Request();

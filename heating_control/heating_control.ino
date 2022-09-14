@@ -104,7 +104,7 @@ void printConfiguration() {
   printOLED(CV.PrintState());
   printOLED(FUPump.PrintState());
   printOLED(heatingSystem.PrintState());
-  flushDisplay();
+  
 }
 
 bool connectToWifi(bool forceReconnect) {
@@ -114,10 +114,9 @@ bool connectToWifi(bool forceReconnect) {
   clearDisplay();
   if (forceReconnect) {
     printOLED("Force WiFi");
-    flushDisplay();
     WiFi.disconnect();
-    delay(1200);
   }
+  
   int retries = 0;
   while (WiFiMulti.run() != WL_CONNECTED && retries < 5)
   {
@@ -125,9 +124,7 @@ bool connectToWifi(bool forceReconnect) {
     printOLED("Connecting to WiFi");
     Serial.println("Connecting to WiFi");
     WiFi.begin(ssid, password);
-    delay(4000);
-    flushDisplay();
-    
+    delay(4000);  
     retries ++;
   }
   clearDisplay();
@@ -137,7 +134,7 @@ bool connectToWifi(bool forceReconnect) {
   printOLED("WiFi connected.");
   printOLED("IP address: ");
   printOLED(WiFi.localIP().toString());
-  flushDisplay();
+  
   return true;
 }
 
@@ -151,17 +148,14 @@ bool mqttConnect(bool forceReconnect) {
   printTimeStamp();
   while ((forceReconnect && retries < 10) || (!client.connected() && retries < 10)) {
     printOLED("Connecting to MQTT...");
-    flushDisplay();
+    
     client.setKeepAlive( 90 ); // setting keep alive to 90 seconds
     if (client.connect("Heating Controller", mqttUser, mqttPassword )) {
-
-      flushDisplay();
       client.publish("esp/test", "Setup bonjour");
-      client.subscribe("esp/test");
-
+      // Now subscribe to all the topics we need
+      heatingSystem.SubscribeToAllTopics();
       client.setCallback(callback);
       printOLED("Connected to MQTT");
-      flushDisplay();
       return (true);
     }
     retries++;
@@ -170,9 +164,6 @@ bool mqttConnect(bool forceReconnect) {
   clearDisplay();
   printOLED("MQTT connect Failed");
   printOLED(String(client.state()));
-  flushDisplay();
-  delay(500);
-  
   return false;
 }
 
@@ -190,15 +181,11 @@ void setup()
 
   if (!connectToWifi(false)) {
     printOLED("Can't connect to WiFi!");
-    flushDisplay();
     delay(5000);
     ESP.restart();
   }
   
   timeClient.begin();
-
-  mqttConnect(false);
-
 
   // 
   // OTA Stuff
@@ -243,8 +230,7 @@ void setup()
   });
 
   ArduinoOTA.begin();
-
-  delay(1000);
+  
   HeatingZone *mill = new HeatingZone("Mill",  new Valve(MILL_V, MILL_MICROSWITCH, "V-M"),  NULL);
   HeatingZone *engr = new HeatingZone("EngR", new Valve(ENG_RM_VALVE, ENG_RM_MICROSWITCH, "V-E"), NULL);
   HeatingZone *gran = new HeatingZone("Gran",  new Valve(GRANARY_VALVE, GRANARY_MICROSWITCH, "V-G"), NULL);
@@ -254,6 +240,8 @@ void setup()
   heatingSystem.AddZone(gran);
   heatingSystem.AddZone(dhw);
 
+  mqttConnect(false);
+  
   printConfiguration();
   //wdt_enable(WDTO_1S);  // Watchdog: reset board after one second, if no "pat the dog" received
 }
@@ -264,15 +252,19 @@ elapsedMillis sinceReconnect;
 
 void loop () {
 
+  if (sincePrintOLED > 100 && !flushed) {
+    flushDisplay();
+  }
+  
   bool forceReconnect = !client.loop();
   if (sinceReconnect > 3600000) { // 1hr
     client.disconnect();
     sinceReconnect = 0;
     forceReconnect = true;
   }
+  
   if (!connectToWifi(forceReconnect)) {
     printOLED("Can't connect to WiFi!");
-    flushDisplay();
     delay(20000);
     ESP.restart();
   }
@@ -283,7 +275,7 @@ void loop () {
 
   if (sinceSuccessfulMqtt > 300000) {
     printOLED("Can't connect to MQTT!");
-    flushDisplay();
+    
     delay(20000);
     ESP.restart();
   }
