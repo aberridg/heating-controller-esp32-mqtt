@@ -35,7 +35,7 @@ const char* ssid     = "New Home";                          //WiFi Name
 /*
    MQTT server details
 */
-const char* mqttServer = "192.168.1.5";
+const char* mqttServer = "192.168.1.55";
 const int mqttPort = 1883;
 const char* mqttUser = "";
 const char* mqttPassword = "";
@@ -175,7 +175,7 @@ void setup()
   display.setFont(ArialMT_Plain_10); // does what is says
   // Set the origin of text to top left
   display.setTextAlignment(TEXT_ALIGN_LEFT);
-
+  display.flipScreenVertically();
   WiFiMulti.addAP(ssid, password);
 
 
