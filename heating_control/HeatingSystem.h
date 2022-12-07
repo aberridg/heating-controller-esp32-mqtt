@@ -28,6 +28,18 @@ class HeatingSystem
       return true;
     }
 
+    int CountZonesOn() {
+      //Serial.println("Counting the number of zones on");
+      int count = 0;
+      for (int i = 0; i < _zones.size(); i++) {
+        HeatingZone *zone = _zones.get(i);
+        if (!zone->IsOff()) {
+          count++;
+        }
+      }
+      return count;
+    }
+
     bool IsCoolingDown() {
       //Serial.println("Checking if all zones are cooling down");
       for (int i = 0; i < _zones.size(); i++) {
@@ -132,7 +144,33 @@ class HeatingSystem
         //client.publish("heating/test", zoneTopic.c_str(), true);
         //client.publish("heating/topic", topic, true);
         if (strcmp(topic, zoneTopic.c_str()) == 0) {
-          zone->HandleMqtt(zoneTopic, payload, length);
+          clearDisplay();
+          printOLED("Got message");
+          printOLED((char*)payload);
+
+          if (!strncmp((char *)payload, "on", length)) {
+            client.publish(String(zoneTopic + "_pub").c_str(), "on", true);
+            zone->Request();
+          } else if (!strncmp((char *)payload, "off", length)) {
+            client.publish(String(zoneTopic + "_pub").c_str(), "off", true);
+            if (zone->IsOn() && CountZonesOn() == 1) {
+              // Only request cool down if this is the one and only zone that is on!
+              zone->RequestCoolDown();
+            } else {
+              zone->RequestShutDown();
+            }
+          } else if (!strncmp((char *)payload, "inhibit", length)) {
+            client.publish(String(zoneTopic + "_pub").c_str(), "inhibit", true);
+            if (zone->IsOn() && CountZonesOn() == 1) {
+              // Only request cool down if this is the one and only zone that is on!
+              zone->RequestCoolDownWithInhibit();
+            } else {
+              zone->Inhibit();
+            }
+          } else if (!strncmp((char *)payload, "uninhibit", length)) {
+            client.publish(String(zoneTopic + "_pub").c_str(), "uninhibit", true);
+            zone->Uninhibit();
+          }
         }
       }
     }

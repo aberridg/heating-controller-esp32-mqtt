@@ -48,6 +48,14 @@ class HeatingZone
       _state = States::coolDownWithInhibitRequested;
     }
 
+    // Shut down immediately and inhibit
+    void Inhibit() {
+      Serial.print("Inhibit");
+      Serial.println(_state);
+      getValve()->Off();
+      _state = States::inhibited; 
+    }
+
     void Uninhibit() {
       if (_state == States::inhibited) {
         _state = States::off;
@@ -73,6 +81,10 @@ class HeatingZone
     bool IsOff() {
       if (_state == States::requested || _state == States::on) return false;
       return _state == States::off || _state == States::shutDownRequested || _state == States::coolDownWithInhibitRequested || _state == States::coolDownRequested;
+    }
+
+    bool IsOn() {
+      return !IsOff();
     }
 
     void ProcessThermostat() {
@@ -119,27 +131,6 @@ class HeatingZone
 
       Serial.println("Zone " + getName() + " update state: ");
       Serial.println(_state);
-    }
-
-    void HandleMqtt(String zoneTopic, byte* payload, unsigned int length) {
-      /// Important!!!! Do not publish anything until topic and payload have been read! Doing so will overwrite topic/payload
-      clearDisplay();
-      printOLED("Got message");
-      printOLED((char*)payload);
-      
-      if (!strncmp((char *)payload, "on", length)) {
-        client.publish(String(zoneTopic + "_pub").c_str(), "on", true);
-        Request();
-      } else if (!strncmp((char *)payload, "off", length)) {
-        client.publish(String(zoneTopic + "_pub").c_str(), "off", true);
-        RequestCoolDown();
-      } else if (!strncmp((char *)payload, "inhibit", length)) {
-        client.publish(String(zoneTopic + "_pub").c_str(), "inhibit", true);
-        RequestCoolDownWithInhibit();
-      } else if (!strncmp((char *)payload, "uninhibit", length)) {
-        client.publish(String(zoneTopic + "_pub").c_str(), "uninhibit", true);
-        Uninhibit();
-      }
     }
 
     Valve *getValve() {
