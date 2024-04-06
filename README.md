@@ -12,5 +12,23 @@ I have designed some custom hardware to go with this:
 
 https://github.com/aberridg/heating-controller-esp32-hardware
 
-Although, it's not quite plug n' play yet - the pin numbers are currently set for my prototype, not the finished hardware (as of Mid-June 2022, the hardware design is on order)!
+Notes for me:
+
+Flashing the board over USB doesn't work without using a hub, and a USB-C to USB-C cable.
+
+My main laptop doesn't allow esptool to upload OTA.
+
+Solution is to copy the generated binary to a Linux machine, run: 
+
+wget https://raw.githubusercontent.com/espressif/arduino-esp32/master/tools/espota.py
+
+(to get the ESP OTA tool)
+
+And then:
+
+python3 ~andrew/espota.py -d -i 192.168.whatever -f /mnt/wherever/heating_control.ino.bin
+
+
+
+
 
