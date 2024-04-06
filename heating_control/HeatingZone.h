@@ -91,10 +91,12 @@ class HeatingZone
       //Serial.println("Process therm");
       if (getThermostat() != NULL && getThermostat()->IsOn() && _state != States::requested && _state != States::on && _state != States::coolDownWithInhibitRequested) {
         //Serial.println("Therm on");
+        mqttClient.publish(String("heating/" + _name + "_thermostat_pub").c_str(), "on", true);
         Request();
       }
 
       if (getThermostat() != NULL && getThermostat()->IsOff() && _state == States::on) {
+        mqttClient.publish(String("heating/" + _name + "_thermostat_pub").c_str(), "off", true);
         RequestCoolDown();
       }
     }

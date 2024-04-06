@@ -100,7 +100,7 @@ class HeatingSystem
       for (int i = 0; i < _zones.size(); i++) {
         HeatingZone *zone = _zones.get(i);
         // Subscribe to the MQTT topic for this zone - important!
-        client.subscribe(String("heating/" + zone->getName()).c_str());
+        mqttClient.subscribe(String("heating/" + zone->getName()).c_str());
       }
     }
 
@@ -115,9 +115,11 @@ class HeatingSystem
         // Switch boiler off!
         Serial.println("Switching boiler off");
         _boiler->Off();
+        mqttClient.publish(String("heating/boiler_pub").c_str(), "off", true);
       }
 
       if (!IsPumpRequired()) {
+        mqttClient.publish(String("heating/pump_pub").c_str(), "off", true);
         Serial.println("Switch pump off");
         // Switch off pump
         _pump->Off();
@@ -125,9 +127,11 @@ class HeatingSystem
 
       if (IsBoilerRequired() && _pump->IsOn() && _sincePumpStarted > 10000 && _boiler->IsOff()) {
         Serial.println("Switching boiler on");
+        mqttClient.publish(String("heating/boiler_pub").c_str(), "on", true);
         _boiler->On();
       } else if (IsPumpRequired() && _pump->IsOff()) { // start pump - if and only if at least one valve is open!
         Serial.println("Switching pump on");
+        mqttClient.publish(String("heating/pump_pub").c_str(), "on", true);
         _pump->On();
         _sincePumpStarted = 0;
       }
@@ -141,18 +145,18 @@ class HeatingSystem
       for (int i = 0; i < _zones.size(); i++) {
         HeatingZone *zone = _zones.get(i);
         String zoneTopic = String("heating/" + zone->getName());
-        //client.publish("heating/test", zoneTopic.c_str(), true);
-        //client.publish("heating/topic", topic, true);
+        //mqttClient.publish("heating/test", zoneTopic.c_str(), true);
+        //mqttClient.publish("heating/topic", topic, true);
         if (strcmp(topic, zoneTopic.c_str()) == 0) {
           clearDisplay();
           printOLED("Got message");
           printOLED((char*)payload);
 
           if (!strncmp((char *)payload, "on", length)) {
-            client.publish(String(zoneTopic + "_pub").c_str(), "on", true);
+            mqttClient.publish(String(zoneTopic + "_pub").c_str(), "on", true);
             zone->Request();
           } else if (!strncmp((char *)payload, "off", length)) {
-            client.publish(String(zoneTopic + "_pub").c_str(), "off", true);
+            mqttClient.publish(String(zoneTopic + "_pub").c_str(), "off", true);
             if (zone->IsOn() && CountZonesOn() == 1) {
               // Only request cool down if this is the one and only zone that is on!
               zone->RequestCoolDown();
@@ -160,7 +164,7 @@ class HeatingSystem
               zone->RequestShutDown();
             }
           } else if (!strncmp((char *)payload, "inhibit", length)) {
-            client.publish(String(zoneTopic + "_pub").c_str(), "inhibit", true);
+            mqttClient.publish(String(zoneTopic + "_pub").c_str(), "inhibit", true);
             if (zone->IsOn() && CountZonesOn() == 1) {
               // Only request cool down if this is the one and only zone that is on!
               zone->RequestCoolDownWithInhibit();
@@ -168,7 +172,7 @@ class HeatingSystem
               zone->Inhibit();
             }
           } else if (!strncmp((char *)payload, "uninhibit", length)) {
-            client.publish(String(zoneTopic + "_pub").c_str(), "uninhibit", true);
+            mqttClient.publish(String(zoneTopic + "_pub").c_str(), "uninhibit", true);
             zone->Uninhibit();
           }
         }

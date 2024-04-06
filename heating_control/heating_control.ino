@@ -15,11 +15,12 @@
 
 #include "SSD1306.h"  // ThingPulse ESP8266_and_ESP32_OLED_driver_for_SSD1306_displays
 #include <WiFi.h>
+#include <ESP32Ping.h> // Manually download into libraries directory from: https://github.com/marian-craciunescu/ESP32Ping
 #include <WiFiMulti.h>
 #include <NTPClient.h>
 #include <WiFiUdp.h>
 #include <ArduinoOTA.h>
-#include <PubSubClient.h>  // Keith O'Leary
+#include <PubSubClient.h>  // Nick O'Leary https://pubsubclient.knolleary.net/
 #include <elapsedMillis.h>
 #include <LinkedList.h>
 
@@ -27,23 +28,25 @@ WiFiMulti WiFiMulti;
 
 const char* ssid     = "New Home";                          //WiFi Name
 // For wifi password, please create a new file called WifiPassword.h
-// with a line like this: 
+// with a line like this:
 // const char* password = "MyWifiPassword";
 
 #include "./WifiPassword.h"
- 
+
 /*
    MQTT server details
 */
-const char* mqttServer = "192.168.1.55";
+const char* mqttServer = "192.168.0.55";
 const int mqttPort = 1883;
 const char* mqttUser = "";
 const char* mqttPassword = "";
 #define MSG_BUFFER_SIZE  (50)
 char msg[MSG_BUFFER_SIZE];
 
+bool pingOk = false;
+
 WiFiClient espClient;
-PubSubClient client(espClient);
+PubSubClient mqttClient(espClient);
 
 #define NTP_OFFSET  3600 // In seconds
 #define NTP_INTERVAL 60 * 1000    // In miliseconds
@@ -68,9 +71,9 @@ SSD1306 display(0x3c, 32, 33); // instance for the OLED. Addr, SDA, SCL
 
 // Definitions for the pins for my zones... Could be improved/not hard-coded, should be part of the Zone objects! Sorry about that!
 #define MILL_V 13  // Zone 1: output to a Relay that controls the Valve(s) // Note - zones 1 and 2 are swapped on my system
-#define MILL_MICROSWITCH 23 
+#define MILL_MICROSWITCH 23
 #define ENG_RM_VALVE  12  // Zone 2: output to a Relay that controls the Valve(s)
-#define ENG_RM_MICROSWITCH 22 
+#define ENG_RM_MICROSWITCH 22
 #define GRANARY_VALVE   14  // Zone 3: output to a Relay that controls the Valve(s) -- Relay Channel 1
 #define GRANARY_MICROSWITCH 26
 #define DHW_VALVE   15 // DHW: output to a Relay that controls the Valve(s) -- Relay Channel 3
@@ -104,7 +107,7 @@ void printConfiguration() {
   printOLED(CV.PrintState());
   printOLED(FUPump.PrintState());
   printOLED(heatingSystem.PrintState());
-  
+
 }
 
 bool connectToWifi(bool forceReconnect) {
@@ -116,7 +119,7 @@ bool connectToWifi(bool forceReconnect) {
     printOLED("Force WiFi");
     WiFi.disconnect();
   }
-  
+
   int retries = 0;
   while (WiFiMulti.run() != WL_CONNECTED && retries < 5)
   {
@@ -124,7 +127,7 @@ bool connectToWifi(bool forceReconnect) {
     printOLED("Connecting to WiFi");
     Serial.println("Connecting to WiFi");
     WiFi.begin(ssid, password);
-    delay(4000);  
+    delay(4000);
     retries ++;
   }
   clearDisplay();
@@ -134,27 +137,27 @@ bool connectToWifi(bool forceReconnect) {
   printOLED("WiFi connected.");
   printOLED("IP address: ");
   printOLED(WiFi.localIP().toString());
-  
+
   return true;
 }
 
 bool mqttConnect(bool forceReconnect) {
-  if (!forceReconnect && client.connected()) return true;
+  if (!forceReconnect && mqttClient.connected()) return true;
   // MQTT
-  client.setServer(mqttServer, mqttPort);
+  mqttClient.setServer(mqttServer, mqttPort);
 
   int retries = 0;
   clearDisplay();
   printTimeStamp();
-  while ((forceReconnect && retries < 10) || (!client.connected() && retries < 10)) {
+  while ((forceReconnect && retries < 3) || (!mqttClient.connected() && retries < 3)) {
     printOLED("Connecting to MQTT...");
-    
-    client.setKeepAlive( 90 ); // setting keep alive to 90 seconds
-    if (client.connect("Heating Controller", mqttUser, mqttPassword )) {
-      client.publish("esp/test", "Setup bonjour");
+
+    mqttClient.setKeepAlive( 90 ); // setting keep alive to 90 seconds
+    if (mqttClient.connect("Heating Controller", mqttUser, mqttPassword )) {
+      mqttClient.publish("esp/test", "Setup bonjour");
       // Now subscribe to all the topics we need
       heatingSystem.SubscribeToAllTopics();
-      client.setCallback(callback);
+      mqttClient.setCallback(callback);
       printOLED("Connected to MQTT");
       return (true);
     }
@@ -163,7 +166,7 @@ bool mqttConnect(bool forceReconnect) {
   }
   clearDisplay();
   printOLED("MQTT connect Failed");
-  printOLED(String(client.state()));
+  printOLED(String(mqttClient.state()));
   return false;
 }
 
@@ -184,10 +187,10 @@ void setup()
     delay(5000);
     ESP.restart();
   }
-  
+
   timeClient.begin();
 
-  // 
+  //
   // OTA Stuff
   //
   // Port defaults to 3232
@@ -230,7 +233,7 @@ void setup()
   });
 
   ArduinoOTA.begin();
-  
+
   HeatingZone *mill = new HeatingZone("Mill",  new Valve(MILL_V, MILL_MICROSWITCH, "V-M"),  NULL);
   HeatingZone *engr = new HeatingZone("EngR", new Valve(ENG_RM_VALVE, ENG_RM_MICROSWITCH, "V-E"), NULL);
   HeatingZone *gran = new HeatingZone("Gran",  new Valve(GRANARY_VALVE, GRANARY_MICROSWITCH, "V-G"), NULL);
@@ -241,53 +244,64 @@ void setup()
   heatingSystem.AddZone(dhw);
 
   mqttConnect(false);
-  
+
   printConfiguration();
   //wdt_enable(WDTO_1S);  // Watchdog: reset board after one second, if no "pat the dog" received
 }
 
 elapsedMillis sinceUpdate;
 elapsedMillis sinceSuccessfulMqtt;
+elapsedMillis sinceMqttRetry;
 elapsedMillis sinceReconnect;
+elapsedMillis sincePing;
 
 void loop () {
 
   if (sincePrintOLED > 100 && !flushed) {
     flushDisplay();
   }
-  
-  bool forceReconnect = !client.loop();
+
+  // loop returns false if mqttClient is no longer connected
+  bool isMqttDisconnected = !mqttClient.loop();
   if (sinceReconnect > 3600000) { // 1hr
-    client.disconnect();
+    mqttClient.disconnect();
     sinceReconnect = 0;
-    forceReconnect = true;
+    isMqttDisconnected = true;
   }
-  
-  if (!connectToWifi(forceReconnect)) {
+
+  if (!connectToWifi(isMqttDisconnected)) {
     printOLED("Can't connect to WiFi!");
     delay(20000);
     ESP.restart();
   }
-  
-  if (mqttConnect(forceReconnect)) {
-    sinceSuccessfulMqtt = 0;
+
+  if (isMqttDisconnected && sinceMqttRetry > 30000) {
+    if (mqttConnect(isMqttDisconnected)) {
+      sinceSuccessfulMqtt = 0;
+    }
+    sinceMqttRetry = 0;
   }
 
-  if (sinceSuccessfulMqtt > 300000) {
+  if (sinceSuccessfulMqtt > 12000000) {
     printOLED("Can't connect to MQTT!");
-    
-    delay(20000);
+
+    delay(2000);
     ESP.restart();
   }
 
   ArduinoOTA.handle();
-  timeClient.update(); 
 
-  // Small delay has been suggested to improve stability of MQTT connection. Doesn't seem to help, so remove it for now
-  //delay(100);
-    
   if (sinceUpdate > 1000) {
-    
+
+    // Don't update timeClient if unsuccessful ping
+    if (sincePing > 3000) {
+      pingOk = Ping.ping("google.com");
+    }
+
+    if (pingOk) {
+      timeClient.update();
+    }
+
     //Serial.println("Updating");
     // Use Indication LED to show board is alive
     iLED.Alternate();
